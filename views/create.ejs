@@ -9,39 +9,32 @@
 <body class="bg-light">
   <div class="container mt-5">
     <h1 class="text-center mb-4">Adicionar Novo Produto</h1>
-    <form action="/create" method="POST" enctype="multipart/form-data" id="productForm" class="card p-4 shadow">
+    <form id="productForm" enctype="multipart/form-data" class="card p-4 shadow">
       <!-- Campos Básicos -->
       <div class="mb-3">
         <label for="name" class="form-label">Nome</label>
-        <input type="text" name="name" id="name" class="form-control" placeholder="Digite o nome do produto" required>
+        <input type="text" name="name" id="name" class="form-control" required>
       </div>
       <div class="mb-3">
         <label for="brand" class="form-label">Marca</label>
-        <input type="text" name="brand" id="brand" class="form-control" placeholder="Digite a marca" required>
+        <input type="text" name="brand" id="brand" class="form-control" required>
       </div>
       <div class="mb-3">
         <label for="category" class="form-label">Categoria</label>
-        <div class="input-group">
-          <select id="category" name="category" class="form-select" required>
-            <option value="" disabled selected>Selecione uma categoria</option>
-            <% categories.forEach(category => { %>
-              <option value="<%= category.name %>"><%= category.name %></option>
-            <% }) %>
-          </select>
-          <button type="button" class="btn btn-outline-secondary" id="addCategoryButton">Nova Categoria</button>
-        </div>
-        <div id="newCategoryDiv" class="mt-2" style="display: none;">
-          <input type="text" id="newCategoryInput" class="form-control" placeholder="Digite o nome da nova categoria">
-          <button type="button" class="btn btn-success mt-2" id="saveCategoryButton">Salvar Categoria</button>
-        </div>
+        <select id="category" name="category" class="form-select" required>
+          <option value="" disabled selected>Selecione uma categoria</option>
+          <% categories.forEach(category => { %>
+            <option value="<%= category.name %>"><%= category.name %></option>
+          <% }) %>
+        </select>
       </div>
       <div class="mb-3">
         <label for="description" class="form-label">Descrição</label>
-        <textarea name="description" id="description" class="form-control" placeholder="Descreva o produto" rows="3" required></textarea>
+        <textarea name="description" id="description" class="form-control" rows="3" required></textarea>
       </div>
 
-      <!-- Tamanhos -->
-      <div id="sizesSection">
+      <!-- Tamanhos e Variantes -->
+      <div id="sizesSection" class="mt-4">
         <h4>Tamanhos</h4>
         <div class="form-check form-check-inline">
           <input class="form-check-input size-checkbox" type="checkbox" id="sizeGG" value="GG">
@@ -64,51 +57,44 @@
           <label class="form-check-label" for="sizePP">PP</label>
         </div>
       </div>
-
-      <!-- Variantes de Tamanho -->
       <div id="variantsSection" class="mt-4"></div>
 
       <!-- Botões -->
       <div class="text-end mt-4">
         <button type="submit" class="btn btn-success">Salvar</button>
-        <a href="/" class="btn btn-secondary">Cancelar</a>
+        <a href="/products" class="btn btn-secondary">Cancelar</a>
       </div>
     </form>
   </div>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const sizeCheckboxes = document.querySelectorAll(".size-checkbox");
+      const form = document.getElementById("productForm");
       const variantsSection = document.getElementById("variantsSection");
-
-      sizeCheckboxes.forEach(checkbox => {
+  
+      document.querySelectorAll(".size-checkbox").forEach(checkbox => {
         checkbox.addEventListener("change", () => {
           const size = checkbox.value;
-
           if (checkbox.checked) {
             const sizeDiv = document.createElement("div");
-            sizeDiv.className = "size-group";
+            sizeDiv.className = "size-group mt-3";
             sizeDiv.id = `size-${size}`;
             sizeDiv.innerHTML = `
-              <h5 class="mt-3">${size}</h5>
-              <div class="form-check form-check-inline">
-                ${["Azul", "Preto", "Branco", "Amarelo", "Verde", "Vermelho"].map(color => `
+              <h5>${size}</h5>
+              ${["Azul", "Preto", "Branco", "Amarelo", "Verde", "Vermelho"]
+                .map(color => `
                   <div class="form-check form-check-inline">
-                    <input class="form-check-input color-checkbox" type="checkbox" id="color-${size}-${color}" value="${color}" data-size="${size}">
+                    <input class="form-check-input color-checkbox" type="checkbox" id="color-${size}-${color}" value="${color}">
                     <label class="form-check-label" for="color-${size}-${color}">${color}</label>
                   </div>
                 `).join("")}
-              </div>
               <div id="details-${size}" class="row mt-3"></div>
             `;
             variantsSection.appendChild(sizeDiv);
-
-            const colorCheckboxes = sizeDiv.querySelectorAll(".color-checkbox");
-            colorCheckboxes.forEach(colorCheckbox => {
+  
+            sizeDiv.querySelectorAll(".color-checkbox").forEach(colorCheckbox => {
               colorCheckbox.addEventListener("change", () => {
                 const color = colorCheckbox.value;
-                const size = colorCheckbox.dataset.size;
-
                 if (colorCheckbox.checked) {
                   const colorDiv = document.createElement("div");
                   colorDiv.className = "col-md-6";
@@ -116,7 +102,6 @@
                   colorDiv.innerHTML = `
                     <div class="card p-3">
                       <h6>${color}</h6>
-                      <input type="hidden" name="sizes[${size}][variants][${color}][color]" value="${color}">
                       <div class="mb-2">
                         <label class="form-label">Preço</label>
                         <input type="number" step="0.01" name="sizes[${size}][variants][${color}][price]" class="form-control" required>
@@ -133,34 +118,75 @@
                         <label class="form-label">Desconto (%)</label>
                         <input type="number" name="sizes[${size}][variants][${color}][discount]" id="discount-${size}-${color}" class="form-control discount-field" disabled>
                       </div>
-                      <div class="mb-2">
-                        <label class="form-label">Imagem</label>
-                        <input type="file" name="sizes[${size}][variants][${color}][image]" class="form-control">
+                      <div class="mb-3">
+                        <label class="form-label">Imagens (Máx: 3)</label>
+                        <div id="image-container-${size}-${color}" class="image-container">
+                          <input type="file" name="sizes[${size}][variants][${color}][images][]" class="form-control mt-2 add-image-input" accept="image/*">
+                        </div>
                       </div>
                     </div>
                   `;
                   document.getElementById(`details-${size}`).appendChild(colorDiv);
-
+  
                   const onSaleCheckbox = colorDiv.querySelector(".on-sale-checkbox");
                   const discountField = colorDiv.querySelector(".discount-field");
                   onSaleCheckbox.addEventListener("change", () => {
                     discountField.disabled = !onSaleCheckbox.checked;
                   });
+  
+                  bindAddImageInputs(size, color);
                 } else {
-                  const colorDiv = document.getElementById(`details-${size}-${color}`);
-                  if (colorDiv) colorDiv.remove();
+                  document.getElementById(`details-${size}-${color}`).remove();
                 }
               });
             });
           } else {
-            const sizeDiv = document.getElementById(`size-${size}`);
-            if (sizeDiv) sizeDiv.remove();
+            document.getElementById(`size-${size}`).remove();
           }
         });
       });
+  
+      const bindAddImageInputs = (size, color) => {
+        const imageContainer = document.getElementById(`image-container-${size}-${color}`);
+        const addImageInputs = imageContainer.querySelectorAll(".add-image-input");
+  
+        addImageInputs.forEach(input => {
+          input.addEventListener("change", () => {
+            const currentInputs = imageContainer.querySelectorAll(".add-image-input");
+            if (currentInputs.length < 3) {
+              const newInput = document.createElement("input");
+              newInput.type = "file";
+              newInput.name = `sizes[${size}][variants][${color}][images][]`;
+              newInput.className = "form-control mt-2 add-image-input";
+              newInput.accept = "image/*";
+              imageContainer.appendChild(newInput);
+              bindAddImageInputs(size, color);
+            }
+          });
+        });
+      };
+  
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        try {
+          const response = await fetch("/products/create", {
+            method: "POST",
+            body: formData,
+          });
+          if (response.ok) {
+            alert("Produto criado com sucesso!");
+            window.location.href = "/products";
+          } else {
+            alert("Erro ao criar produto.");
+          }
+        } catch (error) {
+          console.error("Erro ao enviar o formulário:", error);
+        }
+      });
     });
   </script>
-
+  
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

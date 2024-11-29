@@ -9,7 +9,8 @@
 <body class="bg-light">
   <div class="container mt-5">
     <h1 class="text-center mb-4">Editar Produto</h1>
-    <form action="/edit/<%= product._id %>" method="POST" class="card p-4 shadow">
+    <form id="editProductForm" class="card p-4 shadow">
+      <!-- Campos Básicos -->
       <div class="mb-3">
         <label for="name" class="form-label">Nome</label>
         <input type="text" name="name" id="name" class="form-control" value="<%= product.name %>" required>
@@ -20,22 +21,250 @@
       </div>
       <div class="mb-3">
         <label for="category" class="form-label">Categoria</label>
-        <input type="text" name="category" id="category" class="form-control" value="<%= product.category %>" required>
-      </div>
-      <div class="mb-3">
-        <label for="price" class="form-label">Preço</label>
-        <input type="number" name="price" id="price" class="form-control" value="<%= product.price %>" required>
+        <select id="category" name="category" class="form-select" required>
+          <option value="<%= product.category %>" selected><%= product.category %></option>
+          <% categories.forEach(category => { %>
+            <% if (category.name !== product.category) { %>
+              <option value="<%= category.name %>"><%= category.name %></option>
+            <% } %>
+          <% }) %>
+        </select>
       </div>
       <div class="mb-3">
         <label for="description" class="form-label">Descrição</label>
-        <textarea name="description" id="description" class="form-control"><%= product.description %></textarea>
+        <textarea name="description" id="description" class="form-control" required><%= product.description %></textarea>
       </div>
-      <div class="text-end">
-        <button type="submit" class="btn btn-primary">Atualizar</button>
-        <a href="/" class="btn btn-secondary">Cancelar</a>
+
+      <!-- Tamanhos -->
+      <div id="sizesSection">
+        <h4>Tamanhos</h4>
+        <% const allSizes = ["GG", "G", "M", "P", "PP"]; %>
+        <% allSizes.forEach(size => { %>
+          <div class="form-check form-check-inline">
+            <input 
+              class="form-check-input size-checkbox" 
+              type="checkbox" 
+              id="size-<%= size %>" 
+              value="<%= size %>" 
+              <% if (product.sizes.some(s => s.size === size)) { %> checked <% } %>
+            >
+            <label class="form-check-label" for="size-<%= size %>"><%= size %></label>
+          </div>
+        <% }) %>
+      </div>
+
+      <!-- Variantes de Tamanho -->
+      <div id="variantsSection" class="mt-4"></div>
+
+      <!-- Botões -->
+      <div class="text-end mt-4">
+        <button type="button" id="saveButton" class="btn btn-success">Salvar</button>
+        <a href="/products" class="btn btn-secondary">Cancelar</a>
       </div>
     </form>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const product = <%- JSON.stringify(product) %>; // Dados do produto
+      const sizeCheckboxes = document.querySelectorAll(".size-checkbox");
+      const variantsSection = document.getElementById("variantsSection");
+  
+      const renderSizesAndVariants = () => {
+        product.sizes.forEach(size => {
+          renderSize(size.size);
+          size.variants.forEach(variant => {
+            renderColorDetails(size.size, variant.color, variant);
+          });
+        });
+      };
+  
+      sizeCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener("change", () => {
+          const size = checkbox.value;
+          if (checkbox.checked) {
+            renderSize(size);
+          } else {
+            const sizeDiv = document.getElementById(`size-${size}-section`);
+            if (sizeDiv) sizeDiv.remove();
+          }
+        });
+      });
+  
+      const renderSize = (size) => {
+        if (!document.getElementById(`size-${size}-section`)) {
+          const sizeDiv = document.createElement("div");
+          sizeDiv.className = "size-group mt-3";
+          sizeDiv.id = `size-${size}-section`;
+          sizeDiv.innerHTML = `
+            <h5 class="mt-3">${size}</h5>
+            <div class="form-check form-check-inline">
+              ${["Azul", "Preto", "Branco", "Amarelo", "Verde", "Vermelho"]
+                .map(
+                  (color) => `
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input color-checkbox" type="checkbox" id="color-${size}-${color}" value="${color}" data-size="${size}">
+                    <label class="form-check-label" for="color-${size}-${color}">${color}</label>
+                  </div>
+                `
+                )
+                .join("")}
+            </div>
+            <div id="details-${size}" class="row mt-3"></div>
+          `;
+          variantsSection.appendChild(sizeDiv);
+          bindColorCheckboxes(size);
+        }
+      };
+  
+      const bindColorCheckboxes = (size) => {
+        const colorCheckboxes = document.querySelectorAll(`#size-${size}-section .color-checkbox`);
+        colorCheckboxes.forEach(checkbox => {
+          checkbox.addEventListener("change", () => {
+            const color = checkbox.value;
+            if (checkbox.checked) {
+              renderColorDetails(size, color);
+            } else {
+              const colorDiv = document.getElementById(`details-${size}-${color}`);
+              if (colorDiv) colorDiv.remove();
+            }
+          });
+        });
+      };
+  
+      const renderColorDetails = (size, color, variant = null) => {
+        const detailsDiv = document.getElementById(`details-${size}`);
+        if (!document.getElementById(`details-${size}-${color}`)) {
+          const colorDiv = document.createElement("div");
+          colorDiv.className = "col-md-6";
+          colorDiv.id = `details-${size}-${color}`;
+          colorDiv.innerHTML = `
+            <div class="card p-3">
+              <h6>${color}</h6>
+              <input type="hidden" name="sizes[${size}][variants][${color}][color]" value="${color}">
+              <div class="mb-2">
+                <label class="form-label">Preço</label>
+                <input type="number" step="0.01" name="sizes[${size}][variants][${color}][price]" class="form-control" value="${variant ? variant.price : ''}" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Quantidade</label>
+                <input type="number" name="sizes[${size}][variants][${color}][quantity]" class="form-control" value="${variant ? variant.quantity : ''}" required>
+              </div>
+              <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input on-sale-checkbox" id="onSale-${size}-${color}" name="sizes[${size}][variants][${color}][onSale]" value="true" ${variant && variant.onSale ? 'checked' : ''}>
+                <label class="form-check-label" for="onSale-${size}-${color}">Está em promoção?</label>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Desconto (%)</label>
+                <input type="number" name="sizes[${size}][variants][${color}][discount]" id="discount-${size}-${color}" class="form-control discount-field" value="${variant ? variant.discount : ''}" ${variant && variant.onSale ? '' : 'disabled'}>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Imagens (Máx: 3)</label>
+                <div class="image-container">
+                  ${variant && variant.images ? variant.images.map((img) => `
+                    <div class="d-flex align-items-center mb-2">
+                      <img src="/uploads/${img}" alt="Imagem do Produto" style="width: 100px; height: 100px; object-fit: cover; margin-right: 10px;">
+                      <button type="button" class="btn btn-danger btn-sm remove-image" data-image="${img}" data-color="${color}" data-size="${size}">Remover</button>
+                    </div>`).join('') : ''}
+                  ${renderImageInputs(size, color, variant)}
+                </div>
+              </div>
+            </div>
+          `;
+          detailsDiv.appendChild(colorDiv);
+  
+          bindRemoveImageButtons(size, color);
+          bindAddImageInputs(size, color);
+        }
+      };
+  
+      const renderImageInputs = (size, color, variant) => {
+        const currentImages = variant && variant.images ? variant.images.length : 0;
+        const inputsToRender = Math.max(3 - currentImages, 0);
+        let inputFields = '';
+        for (let i = 0; i < inputsToRender; i++) {
+          inputFields += `
+            <input type="file" name="sizes[${size}][variants][${color}][images][]" class="form-control mt-2 add-image-input" accept="image/*">
+          `;
+        }
+        return inputFields;
+      };
+  
+      const bindAddImageInputs = (size, color) => {
+        const imageContainer = document.querySelector(`#details-${size}-${color} .image-container`);
+        const addImageInputs = imageContainer.querySelectorAll(".add-image-input");
+  
+        addImageInputs.forEach(input => {
+          input.addEventListener("change", () => {
+            const currentInputs = imageContainer.querySelectorAll(".add-image-input");
+            const currentImages = imageContainer.querySelectorAll("img");
+            if (currentInputs.length + currentImages.length < 3) {
+              const newInput = document.createElement("input");
+              newInput.type = "file";
+              newInput.name = `sizes[${size}][variants][${color}][images][]`;
+              newInput.className = "form-control mt-2 add-image-input";
+              newInput.accept = "image/*";
+              imageContainer.appendChild(newInput);
+              bindAddImageInputs(size, color);
+            }
+          });
+        });
+      };
+  
+      const bindRemoveImageButtons = (size, color) => {
+        const removeButtons = document.querySelectorAll(`#details-${size}-${color} .remove-image`);
+        removeButtons.forEach(button => {
+          button.addEventListener("click", (e) => {
+            e.preventDefault();
+            const imageDiv = button.parentElement;
+            imageDiv.remove();
+  
+            // Re-render image inputs if the number of images decreases
+            const imageContainer = document.querySelector(`#details-${size}-${color} .image-container`);
+            const currentImages = imageContainer.querySelectorAll("img").length;
+            const currentInputs = imageContainer.querySelectorAll(".add-image-input").length;
+  
+            if (currentImages + currentInputs < 3) {
+              const newInput = document.createElement("input");
+              newInput.type = "file";
+              newInput.name = `sizes[${size}][variants][${color}][images][]`;
+              newInput.className = "form-control mt-2 add-image-input";
+              newInput.accept = "image/*";
+              imageContainer.appendChild(newInput);
+              bindAddImageInputs(size, color);
+            }
+          });
+        });
+      };
+  
+      const saveButton = document.getElementById("saveButton");
+      saveButton.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const form = document.getElementById("editProductForm");
+        const formData = new FormData(form);
+  
+        try {
+          const response = await fetch(`/products/edit/${product._id}`, {
+            method: "POST",
+            body: formData,
+          });
+  
+          if (response.ok) {
+            alert("Produto atualizado com sucesso!");
+            window.location.href = "/products";
+          } else {
+            alert("Erro ao atualizar produto.");
+          }
+        } catch (error) {
+          console.error("Erro:", error);
+          alert("Erro ao salvar o produto.");
+        }
+      });
+  
+      renderSizesAndVariants();
+    });
+  </script>
+  
+  
 </body>
 </html>
