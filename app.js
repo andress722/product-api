@@ -22,7 +22,7 @@ mongoose
 app.use(cors());
 
 // Ou para uma origem específica
-app.use(cors({ origin: "http://localhost:3002" }));
+app.use(cors({ origin: "http://localhost:3000" }));
 
 // Configurar EJS e Middlewares
 app.use(express.urlencoded({ extended: true })); // Para processar dados de formulários HTML
